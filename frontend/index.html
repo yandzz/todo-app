@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Todo任务管理器</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 20px; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        h1 { color: white; text-align: center; margin-bottom: 20px; }
+        
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .btn { padding: 10px 16px; background: rgba(255,255,255,0.2); color: white; border: none; border-radius: 20px; cursor: pointer; font-size: 14px; }
+        .btn:hover { background: rgba(255,255,255,0.3); }
+        
+        .stats-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 20px; }
+        .stat-card { background: rgba(255,255,255,0.2); padding: 15px; border-radius: 15px; color: white; text-align: center; }
+        .stat-number { font-size: 1.6em; font-weight: bold; }
+        .stat-label { font-size: 0.8em; opacity: 0.9; }
+        
+        .charts-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 20px; }
+        .chart-card { background: white; border-radius: 15px; padding: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
+        
+        .card { background: white; border-radius: 15px; padding: 20px; margin-bottom: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
+        
+        .input-row { display: flex; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
+        input, select { flex: 1; min-width: 120px; padding: 12px; border: 2px solid #e0e0e0; border-radius: 10px; font-size: 14px; }
+        input:focus, select:focus { outline: none; border-color: #667eea; }
+        
+        .btn-primary { background: linear-gradient(135deg, #667eea, #764ba2); color: white; border: none; }
+        
+        .filter-bar { display: flex; gap: 8px; margin-bottom: 15px; flex-wrap: wrap; }
+        .filter-btn { padding: 8px 16px; background: rgba(255,255,255,0.2); color: white; border: none; border-radius: 20px; cursor: pointer; }
+        .filter-btn.active { background: white; color: #667eea; }
+        
+        .todo-list { background: white; border-radius: 15px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
+        .todo-item { display: flex; align-items: center; padding: 15px 20px; border-bottom: 1px solid #eee; gap: 12px; }
+        .todo-item:last-child { border-bottom: none; }
+        
+        .checkbox { width: 22px; height: 22px; border: 2px solid #667eea; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        .todo-item.completed .checkbox { background: #667eea; }
+        .todo-item.completed .checkbox::after { content: '✓'; color: white; font-size: 12px; }
+        .todo-item.completed .todo-text { text-decoration: line-through; opacity: 0.6; }
+        
+        .todo-content { flex: 1; }
+        .todo-text { font-size: 15px; }
+        .todo-meta { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+        .tag, .priority, .due-date { padding: 3px 10px; border-radius: 12px; font-size: 11px; color: white; }
+        .tag-work { background: #FF6B6B; }
+        .tag-life { background: #4ECDC4; }
+        .tag-study { background: #45B7D1; }
+        .tag-health { background: #96CEB4; }
+        .tag-other { background: #95A5A6; }
+        .priority-high { background: #FF6B6B; }
+        .priority-medium { background: #FFB347; }
+        .priority-low { background: #4ECDC4; }
+        .due-date { background: #667eea; }
+        
+        .todo-actions { display: flex; gap: 6px; }
+        .btn-icon { padding: 6px 10px; border: none; border-radius: 6px; cursor: pointer; font-size: 12px; }
+        .btn-edit { background: #667eea; color: white; }
+        .btn-delete { background: #ff6b6b; color: white; }
+        
+        .empty { text-align: center; padding: 50px; color: #999; }
+        
+        @media (max-width: 768px) { .stats-grid { grid-template-columns: repeat(3, 1fr); } .charts-grid { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+    <div id="app" class="container">
+        <div class="header">
+            <h1>📝 Todo任务管理器</h1>
+            <div>
+                <button class="btn" @click="toggleStats">📊</button>
+                <button class="btn" @click="exportData">📤</button>
+            </div>
+        </div>
+        
+        <div class="stats-grid">
+            <div class="stat-card"><div class="stat-number">{{ stats.total }}</div><div class="stat-label">总任务</div></div>
+            <div class="stat-card"><div class="stat-number">{{ stats.completed }}</div><div class="stat-label">已完成</div></div>
+            <div class="stat-card"><div class="stat-number">{{ stats.pending }}</div><div class="stat-label">待完成</div></div>
+            <div class="stat-card"><div class="stat-number">{{ stats.overdue }}</div><div class="stat-label">已过期</div></div>
+            <div class="stat-card"><div class="stat-number">{{ stats.dueToday }}</div><div class="stat-label">今日到期</div></div>
+        </div>
+        
+        <div class="charts-grid" v-show="showStats">
+            <div class="chart-card"><h3>完成情况</h3><canvas ref="completionChart"></canvas></div>
+            <div class="chart-card"><h3>标签分布</h3><canvas ref="tagChart"></canvas></div>
+            <div class="chart-card"><h3>优先级</h3><canvas ref="priorityChart"></canvas></div>
+        </div>
+        
+        <div class="card">
+            <div class="input-row">
+                <input v-model="newTask.text" placeholder="添加任务..." @keyup.enter="addTask">
+                <select v-model="newTask.tag">
+                    <option value="">标签</option>
+                    <option value="work">💼 工作</option>
+                    <option value="life">🏠 生活</option>
+                    <option value="study">📚 学习</option>
+                    <option value="health">🏃 健康</option>
+                </select>
+                <select v-model="newTask.priority">
+                    <option value="high">🔴 高</option>
+                    <option value="medium">🟡 中</option>
+                    <option value="low">🟢 低</option>
+                </select>
+                <input type="date" v-model="newTask.dueDate">
+            </div>
+            <div class="input-row">
+                <select v-model="newTask.repeat">
+                    <option value="">不重复</option>
+                    <option value="daily">每天</option>
+                    <option value="weekly">每周</option>
+                    <option value="monthly">每月</option>
+                </select>
+                <button class="btn btn-primary" @click="addTask">添加任务</button>
+            </div>
+        </div>
+        
+        <div class="filter-bar">
+            <button class="filter-btn" :class="{ active: filter === 'all' }" @click="filter = 'all'; loadTasks()">全部</button>
+            <button class="filter-btn" :class="{ active: filter === 'pending' }" @click="filter = 'pending'; loadTasks()">待完成</button>
+            <button class="filter-btn" :class="{ active: filter === 'completed' }" @click="filter = 'completed'; loadTasks()">已完成</button>
+        </div>
+        
+        <div class="todo-list">
+            <div v-if="tasks.length === 0" class="empty">暂无任务</div>
+            <div v-for="task in tasks" :key="task.id" class="todo-item" :class="{ completed: task.completed }">
+                <div class="checkbox" @click="toggleTask(task.id)"></div>
+                <div class="todo-content">
+                    <div class="todo-text">{{ task.text }}</div>
+                    <div class="todo-meta">
+                        <span v-if="task.tag" class="tag" :class="'tag-' + task.tag">{{ getTagName(task.tag) }}</span>
+                        <span class="priority" :class="'priority-' + task.priority">{{ getPriorityName(task.priority) }}</span>
+                        <span v-if="task.dueDate" class="due-date">{{ task.dueDate }}</span>
+                    </div>
+                </div>
+                <div class="todo-actions">
+                    <button class="btn-icon btn-delete" @click="deleteTask(task.id)">🗑️</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const { createApp, ref, onMounted, watch } = Vue;
+        
+        createApp({
+            setup() {
+                const API_URL = 'http://localhost:8080/api';
+                const tasks = ref([]);
+                const stats = ref({ total: 0, completed: 0, pending: 0, overdue: 0, dueToday: 0 });
+                const filter = ref('all');
+                const showStats = ref(false);
+                const newTask = ref({ text: '', tag: '', priority: 'medium', dueDate: '', repeat: '' });
+                const completionChart = ref(null);
+                const tagChart = ref(null);
+                const priorityChart = ref(null);
+                
+                let charts = { completion: null, tag: null, priority: null };
+                
+                const loadTasks = async () => {
+                    let url = API_URL + '/tasks';
+                    if (filter.value === 'completed') url += '?status=completed';
+                    else if (filter.value === 'pending') url += '?status=pending';
+                    
+                    tasks.value = await fetch(url).then(r => r.json());
+                    loadStats();
+                };
+                
+                const loadStats = async () => {
+                    stats.value = await fetch(API_URL + '/stats').then(r => r.json());
+                    updateCharts();
+                };
+                
+                const addTask = async () => {
+                    if (!newTask.value.text.trim()) return;
+                    await fetch(API_URL + '/tasks', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(newTask.value)
+                    });
+                    newTask.value = { text: '', tag: '', priority: 'medium', dueDate: '', repeat: '' };
+                    loadTasks();
+                };
+                
+                const toggleTask = async (id) => {
+                    await fetch(API_URL + '/tasks/' + id + '/toggle', { method: 'PATCH' });
+                    loadTasks();
+                };
+                
+                const deleteTask = async (id) => {
+                    await fetch(API_URL + '/tasks/' + id, { method: 'DELETE' });
+                    loadTasks();
+                };
+                
+                const getTagName = (tag) => ({ work: '💼工作', life: '🏠生活', study: '📚学习', health: '🏃健康', other: '📌' }[tag] || '');
+                const getPriorityName = (p) => ({ high: '🔴高', medium: '🟡中', low: '🟢低' }[p] || '🟡');
+                
+                const toggleStats = () => { showStats.value = !showStats.value; };
+                
+                const updateCharts = () => {
+                    if (!showStats.value) return;
+                    
+                    if (charts.completion) charts.completion.destroy();
+                    if (charts.tag) charts.tag.destroy();
+                    if (charts.priority) charts.priority.destroy();
+                    
+                    charts.completion = new Chart(completionChart.value, {
+                        type: 'doughnut',
+                        data: { labels: ['已完成', '待完成'], datasets: [{ data: [stats.value.completed, stats.value.pending], backgroundColor: ['#4ECDC4', '#667eea'] }] }
+                    });
+                    
+                    charts.tag = new Chart(tagChart.value, {
+                        type: 'pie',
+                        data: { labels: ['工作', '生活', '学习', '健康'], datasets: [{ data: [tasks.value.filter(t => t.tag === 'work').length, tasks.value.filter(t => t.tag === 'life').length, tasks.value.filter(t => t.tag === 'study').length, tasks.value.filter(t => t.tag === 'health').length], backgroundColor: ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4'] }] }
+                    });
+                    
+                    charts.priority = new Chart(priorityChart.value, {
+                        type: 'bar',
+                        data: { labels: ['高', '中', '低'], datasets: [{ label: '数量', data: [tasks.value.filter(t => t.priority === 'high').length, tasks.value.filter(t => t.priority === 'medium').length, tasks.value.filter(t => t.priority === 'low').length], backgroundColor: ['#FF6B6B', '#FFB347', '#4ECDC4'] }] }
+                    });
+                };
+                
+                const exportData = async () => {
+                    const data = await fetch(API_URL + '/tasks').then(r => r.json());
+                    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                    const a = document.createElement('a');
+                    a.href = URL.createObjectURL(blob);
+                    a.download = 'todo-backup.json';
+                    a.click();
+                };
+                
+                onMounted(() => { loadTasks(); });
+                
+                return { tasks, stats, filter, showStats, newTask, completionChart, tagChart, priorityChart, loadTasks, addTask, toggleTask, deleteTask, getTagName, getPriorityName, toggleStats, exportData };
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>
