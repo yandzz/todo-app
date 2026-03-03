@@ -21,8 +21,9 @@ public class TaskController {
             @RequestParam(required = false) String tag,
             @RequestParam(required = false) String priority,
             @RequestParam(required = false) String status,
-            @RequestParam(required = false) String search) {
-        return taskService.getTasksByFilter(tag, priority, status, search);
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String list) {
+        return taskService.getTasksByFilter(tag, priority, status, search, list);
     }
 
     @GetMapping("/tasks/{id}")
@@ -44,6 +45,17 @@ public class TaskController {
         task.setRepeat((String) payload.getOrDefault("repeat", ""));
         task.setReminder((String) payload.getOrDefault("reminder", ""));
         task.setNotes((String) payload.getOrDefault("notes", ""));
+        task.setDescription((String) payload.getOrDefault("description", ""));
+        task.setListName((String) payload.getOrDefault("listName", "默认"));
+        task.setColor((String) payload.getOrDefault("color", ""));
+        task.setLocation((String) payload.getOrDefault("location", ""));
+        task.setUrl((String) payload.getOrDefault("url", ""));
+        
+        Object orderObj = payload.get("orderIndex");
+        if (orderObj != null) {
+            task.setOrderIndex(((Number) orderObj).intValue());
+        }
+        
         return taskService.createTask(task);
     }
 
@@ -58,6 +70,17 @@ public class TaskController {
             task.setRepeat((String) payload.getOrDefault("repeat", task.getRepeat()));
             task.setReminder((String) payload.getOrDefault("reminder", task.getReminder()));
             task.setNotes((String) payload.getOrDefault("notes", task.getNotes()));
+            task.setDescription((String) payload.getOrDefault("description", task.getDescription()));
+            task.setListName((String) payload.getOrDefault("listName", task.getListName()));
+            task.setColor((String) payload.getOrDefault("color", task.getColor()));
+            task.setLocation((String) payload.getOrDefault("location", task.getLocation()));
+            task.setUrl((String) payload.getOrDefault("url", task.getUrl()));
+            
+            Object orderObj = payload.get("orderIndex");
+            if (orderObj != null) {
+                task.setOrderIndex(((Number) orderObj).intValue());
+            }
+            
             return taskService.updateTask(id, task);
         }
         return null;
@@ -72,6 +95,47 @@ public class TaskController {
     public ResponseEntity<?> deleteTask(@PathVariable Long id) {
         taskService.deleteTask(id);
         return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/tasks/batch")
+    public Map<String, Object> batchOperation(@RequestBody Map<String, Object> payload) {
+        String action = (String) payload.get("action");
+        List<Number> ids = (List<Number>) payload.get("ids");
+        
+        int affected = 0;
+        for (Number id : ids) {
+            try {
+                switch (action) {
+                    case "complete":
+                        Task t = taskService.getTaskById(id.longValue());
+                        if (t != null) {
+                            t.setCompleted(true);
+                            taskService.updateTask(id.longValue(), t);
+                            affected++;
+                        }
+                        break;
+                    case "delete":
+                        taskService.deleteTask(id.longValue());
+                        affected++;
+                        break;
+                }
+            } catch (Exception e) {
+                // Ignore
+            }
+        }
+        return Map.of("success", true, "affected", affected);
+    }
+
+    @PostMapping("/tasks/reorder")
+    public List<Task> reorderTasks(@RequestBody Map<String, Object> payload) {
+        List<Number> ids = (List<Number>) payload.get("ids");
+        List<Long> longIds = ids.stream().map(Number::longValue).collect(java.util.stream.Collectors.toList());
+        return taskService.reorderTasks(longIds);
+    }
+
+    @GetMapping("/lists")
+    public List<String> getLists() {
+        return taskService.getLists();
     }
 
     @GetMapping("/stats")

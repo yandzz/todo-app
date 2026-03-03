@@ -6,76 +6,132 @@
     <title>Todo任务管理器</title>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 20px; }
+        :root { 
+            --primary: #667eea; 
+            --bg: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --card-bg: #ffffff;
+            --text: #333;
+            --border: #e0e0e0;
+        }
+        [data-theme="dark"] {
+            --bg: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            --card-bg: #1e1e2e;
+            --text: #e0e0e0;
+            --border: #333;
+        }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); min-height: 100vh; padding: 20px; color: var(--text); }
         .container { max-width: 1200px; margin: 0 auto; }
-        h1 { color: white; text-align: center; margin-bottom: 20px; }
         
-        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-        .btn { padding: 10px 16px; background: rgba(255,255,255,0.2); color: white; border: none; border-radius: 20px; cursor: pointer; font-size: 14px; }
-        .btn:hover { background: rgba(255,255,255,0.3); }
+        /* Header */
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; color: white; }
+        .header h1 { font-size: 1.8em; }
+        .header-actions { display: flex; gap: 10px; }
+        .btn { padding: 10px 16px; background: rgba(255,255,255,0.2); color: white; border: none; border-radius: 20px; cursor: pointer; font-size: 14px; transition: all 0.3s; }
+        .btn:hover { background: rgba(255,255,255,0.3); transform: translateY(-2px); }
         
+        /* Stats */
         .stats-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 20px; }
         .stat-card { background: rgba(255,255,255,0.2); padding: 15px; border-radius: 15px; color: white; text-align: center; }
         .stat-number { font-size: 1.6em; font-weight: bold; }
         .stat-label { font-size: 0.8em; opacity: 0.9; }
         
-        .charts-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 20px; }
-        .chart-card { background: white; border-radius: 15px; padding: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
+        /* Layout */
+        .main-grid { display: grid; grid-template-columns: 250px 1fr; gap: 20px; }
         
-        .card { background: white; border-radius: 15px; padding: 20px; margin-bottom: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
+        /* Sidebar */
+        .sidebar { background: var(--card-bg); border-radius: 15px; padding: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
+        .sidebar h3 { margin-bottom: 15px; font-size: 14px; color: #999; text-transform: uppercase; }
+        .list-item { padding: 12px 15px; border-radius: 10px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; transition: all 0.2s; }
+        .list-item:hover { background: rgba(102,126,234,0.1); }
+        .list-item.active { background: var(--primary); color: white; }
+        .list-count { background: rgba(0,0,0,0.1); padding: 2px 8px; border-radius: 10px; font-size: 12px; }
         
-        .input-row { display: flex; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
-        input, select { flex: 1; min-width: 120px; padding: 12px; border: 2px solid #e0e0e0; border-radius: 10px; font-size: 14px; }
-        input:focus, select:focus { outline: none; border-color: #667eea; }
+        /* Content */
+        .content { display: flex; flex-direction: column; gap: 20px; }
         
+        /* Card */
+        .card { background: var(--card-bg); border-radius: 15px; padding: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
+        
+        /* Input */
+        .input-group { margin-bottom: 15px; }
+        .input-group input, .input-group select, .input-group textarea { 
+            width: 100%; padding: 12px; border: 2px solid var(--border); border-radius: 10px; font-size: 14px; background: var(--card-bg); color: var(--text); 
+        }
+        .input-row { display: flex; gap: 10px; flex-wrap: wrap; }
+        .input-row > * { flex: 1; min-width: 120px; }
+        
+        /* Buttons */
         .btn-primary { background: linear-gradient(135deg, #667eea, #764ba2); color: white; border: none; }
+        .btn-danger { background: #ff6b6b; color: white; border: none; }
         
+        /* Filter */
         .filter-bar { display: flex; gap: 8px; margin-bottom: 15px; flex-wrap: wrap; }
         .filter-btn { padding: 8px 16px; background: rgba(255,255,255,0.2); color: white; border: none; border-radius: 20px; cursor: pointer; }
-        .filter-btn.active { background: white; color: #667eea; }
+        .filter-btn.active { background: white; color: var(--primary); }
         
-        .todo-list { background: white; border-radius: 15px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
-        .todo-item { display: flex; align-items: center; padding: 15px 20px; border-bottom: 1px solid #eee; gap: 12px; }
-        .todo-item:last-child { border-bottom: none; }
+        /* Task List */
+        .task-list { background: var(--card-bg); border-radius: 15px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
+        .task-item { display: flex; align-items: flex-start; padding: 15px 20px; border-bottom: 1px solid var(--border); gap: 12px; transition: background 0.2s; }
+        .task-item:hover { background: rgba(102,126,234,0.05); }
+        .task-item.completed { opacity: 0.6; }
         
-        .checkbox { width: 22px; height: 22px; border: 2px solid #667eea; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; }
-        .todo-item.completed .checkbox { background: #667eea; }
-        .todo-item.completed .checkbox::after { content: '✓'; color: white; font-size: 12px; }
-        .todo-item.completed .todo-text { text-decoration: line-through; opacity: 0.6; }
+        .checkbox { 
+            width: 24px; height: 24px; border: 2px solid var(--primary); border-radius: 50%; cursor: pointer; 
+            display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 2px;
+        }
+        .task-item.completed .checkbox { background: var(--primary); }
+        .task-item.completed .checkbox::after { content: '✓'; color: white; font-size: 14px; }
         
-        .todo-content { flex: 1; }
-        .todo-text { font-size: 15px; }
-        .todo-meta { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
-        .tag, .priority, .due-date { padding: 3px 10px; border-radius: 12px; font-size: 11px; color: white; }
+        .task-content { flex: 1; }
+        .task-text { font-size: 15px; margin-bottom: 8px; }
+        .task-item.completed .task-text { text-decoration: line-through; }
+        
+        .task-meta { display: flex; gap: 6px; flex-wrap: wrap; }
+        .tag, .priority, .due-date, .badge { padding: 3px 10px; border-radius: 12px; font-size: 11px; color: white; }
         .tag-work { background: #FF6B6B; }
         .tag-life { background: #4ECDC4; }
         .tag-study { background: #45B7D1; }
         .tag-health { background: #96CEB4; }
-        .tag-other { background: #95A5A6; }
         .priority-high { background: #FF6B6B; }
         .priority-medium { background: #FFB347; }
         .priority-low { background: #4ECDC4; }
-        .due-date { background: #667eea; }
+        .due-date { background: var(--primary); }
+        .due-date.overdue { background: #FF6B6B; }
         
-        .todo-actions { display: flex; gap: 6px; }
+        .task-actions { display: flex; gap: 6px; }
         .btn-icon { padding: 6px 10px; border: none; border-radius: 6px; cursor: pointer; font-size: 12px; }
-        .btn-edit { background: #667eea; color: white; }
-        .btn-delete { background: #ff6b6b; color: white; }
         
         .empty { text-align: center; padding: 50px; color: #999; }
         
-        @media (max-width: 768px) { .stats-grid { grid-template-columns: repeat(3, 1fr); } .charts-grid { grid-template-columns: 1fr; } }
+        /* Color picker */
+        .color-options { display: flex; gap: 8px; margin-top: 10px; }
+        .color-option { width: 30px; height: 30px; border-radius: 50%; cursor: pointer; border: 3px solid transparent; }
+        .color-option.selected { border-color: #333; }
+        
+        /* Modal */
+        .modal { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 1000; }
+        .modal.show { display: flex; }
+        .modal-content { background: var(--card-bg); padding: 25px; border-radius: 15px; max-width: 500px; width: 90%; max-height: 90vh; overflow-y: auto; }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        
+        @media (max-width: 768px) { 
+            .stats-grid { grid-template-columns: repeat(3, 1fr); } 
+            .main-grid { grid-template-columns: 1fr; }
+            .sidebar { display: none; }
+        }
     </style>
 </head>
 <body>
     <div id="app" class="container">
         <div class="header">
             <h1>📝 Todo任务管理器</h1>
-            <div>
-                <button class="btn" @click="toggleStats">📊</button>
+            <div class="header-actions">
+                <button class="btn" @click="showStats = !showStats">📊</button>
                 <button class="btn" @click="exportData">📤</button>
+                <button class="btn" @click="theme = theme === 'light' ? 'dark' : 'light'">{{ theme === 'light' ? '🌙' : '☀️' }}</button>
             </div>
         </div>
         
@@ -87,60 +143,136 @@
             <div class="stat-card"><div class="stat-number">{{ stats.dueToday }}</div><div class="stat-label">今日到期</div></div>
         </div>
         
-        <div class="charts-grid" v-show="showStats">
-            <div class="chart-card"><h3>完成情况</h3><canvas ref="completionChart"></canvas></div>
-            <div class="chart-card"><h3>标签分布</h3><canvas ref="tagChart"></canvas></div>
-            <div class="chart-card"><h3>优先级</h3><canvas ref="priorityChart"></canvas></div>
-        </div>
-        
-        <div class="card">
-            <div class="input-row">
-                <input v-model="newTask.text" placeholder="添加任务..." @keyup.enter="addTask">
-                <select v-model="newTask.tag">
-                    <option value="">标签</option>
-                    <option value="work">💼 工作</option>
-                    <option value="life">🏠 生活</option>
-                    <option value="study">📚 学习</option>
-                    <option value="health">🏃 健康</option>
-                </select>
-                <select v-model="newTask.priority">
-                    <option value="high">🔴 高</option>
-                    <option value="medium">🟡 中</option>
-                    <option value="low">🟢 低</option>
-                </select>
-                <input type="date" v-model="newTask.dueDate">
+        <div class="main-grid">
+            <div class="sidebar">
+                <h3>任务列表</h3>
+                <div class="list-item" :class="{ active: currentList === 'all' }" @click="currentList = 'all'; loadTasks()">
+                    <span>📋 全部</span>
+                    <span class="list-count">{{ stats.total }}</span>
+                </div>
+                <div class="list-item" v-for="list in lists" :key="list" :class="{ active: currentList === list }" @click="currentList = list; loadTasks()">
+                    <span>📁 {{ list }}</span>
+                    <span class="list-count">{{ getListCount(list) }}</span>
+                </div>
             </div>
-            <div class="input-row">
-                <select v-model="newTask.repeat">
-                    <option value="">不重复</option>
-                    <option value="daily">每天</option>
-                    <option value="weekly">每周</option>
-                    <option value="monthly">每月</option>
-                </select>
-                <button class="btn btn-primary" @click="addTask">添加任务</button>
-            </div>
-        </div>
-        
-        <div class="filter-bar">
-            <button class="filter-btn" :class="{ active: filter === 'all' }" @click="filter = 'all'; loadTasks()">全部</button>
-            <button class="filter-btn" :class="{ active: filter === 'pending' }" @click="filter = 'pending'; loadTasks()">待完成</button>
-            <button class="filter-btn" :class="{ active: filter === 'completed' }" @click="filter = 'completed'; loadTasks()">已完成</button>
-        </div>
-        
-        <div class="todo-list">
-            <div v-if="tasks.length === 0" class="empty">暂无任务</div>
-            <div v-for="task in tasks" :key="task.id" class="todo-item" :class="{ completed: task.completed }">
-                <div class="checkbox" @click="toggleTask(task.id)"></div>
-                <div class="todo-content">
-                    <div class="todo-text">{{ task.text }}</div>
-                    <div class="todo-meta">
-                        <span v-if="task.tag" class="tag" :class="'tag-' + task.tag">{{ getTagName(task.tag) }}</span>
-                        <span class="priority" :class="'priority-' + task.priority">{{ getPriorityName(task.priority) }}</span>
-                        <span v-if="task.dueDate" class="due-date">{{ task.dueDate }}</span>
+            
+            <div class="content">
+                <div class="card">
+                    <div class="input-group">
+                        <input v-model="newTask.text" placeholder="添加新任务..." @keyup.enter="addTask">
+                    </div>
+                    <div class="input-row">
+                        <select v-model="newTask.listName">
+                            <option value="默认">📋 默认</option>
+                            <option value="工作">💼 工作</option>
+                            <option value="生活">🏠 生活</option>
+                            <option value="学习">📚 学习</option>
+                            <option value="健康">🏃 健康</option>
+                        </select>
+                        <select v-model="newTask.tag">
+                            <option value="">标签</option>
+                            <option value="work">💼 工作</option>
+                            <option value="life">🏠 生活</option>
+                            <option value="study">📚 学习</option>
+                            <option value="health">🏃 健康</option>
+                        </select>
+                        <select v-model="newTask.priority">
+                            <option value="high">🔴 高</option>
+                            <option value="medium">🟡 中</option>
+                            <option value="low">🟢 低</option>
+                        </select>
+                        <input type="date" v-model="newTask.dueDate">
+                    </div>
+                    <div class="input-row" style="margin-top: 10px;">
+                        <select v-model="newTask.repeat">
+                            <option value="">不重复</option>
+                            <option value="daily">🔁 每天</option>
+                            <option value="weekly">📅 每周</option>
+                            <option value="monthly">📆 每月</option>
+                        </select>
+                        <input type="text" v-model="newTask.description" placeholder="任务描述...">
+                        <button class="btn btn-primary" @click="addTask">添加任务</button>
+                    </div>
+                    <div class="color-options">
+                        <div class="color-option" style="background: #FF6B6B" @click="newTask.color = '#FF6B6B'" :class="{ selected: newTask.color === '#FF6B6B' }"></div>
+                        <div class="color-option" style="background: #4ECDC4" @click="newTask.color = '#4ECDC4'" :class="{ selected: newTask.color === '#4ECDC4' }"></div>
+                        <div class="color-option" style="background: #45B7D1" @click="newTask.color = '#45B7D1'" :class="{ selected: newTask.color === '#45B7D1' }"></div>
+                        <div class="color-option" style="background: #96CEB4" @click="newTask.color = '#96CEB4'" :class="{ selected: newTask.color === '#96CEB4' }"></div>
+                        <div class="color-option" style="background: #FFB347" @click="newTask.color = '#FFB347'" :class="{ selected: newTask.color === '#FFB347' }"></div>
                     </div>
                 </div>
-                <div class="todo-actions">
-                    <button class="btn-icon btn-delete" @click="deleteTask(task.id)">🗑️</button>
+                
+                <div class="filter-bar">
+                    <button class="filter-btn" :class="{ active: filter === 'all' }" @click="filter = 'all'; loadTasks()">全部</button>
+                    <button class="filter-btn" :class="{ active: filter === 'pending' }" @click="filter = 'pending'; loadTasks()">待完成</button>
+                    <button class="filter-btn" :class="{ active: filter === 'completed' }" @click="filter = 'completed'; loadTasks()">已完成</button>
+                    <button class="filter-btn" :class="{ active: filter === 'overdue' }" @click="filter = 'overdue'; loadTasks()">⚠️ 已过期</button>
+                </div>
+                
+                <div class="task-list">
+                    <div v-if="tasks.length === 0" class="empty">暂无任务</div>
+                    <div v-for="task in tasks" :key="task.id" class="task-item" :class="{ completed: task.completed }" :style="{ borderLeft: task.color ? '4px solid ' + task.color : '' }">
+                        <div class="checkbox" @click="toggleTask(task.id)"></div>
+                        <div class="task-content">
+                            <div class="task-text">{{ task.text }}</div>
+                            <div class="task-meta">
+                                <span v-if="task.listName" class="badge">{{ task.listName }}</span>
+                                <span v-if="task.tag" class="tag" :class="'tag-' + task.tag">{{ getTagName(task.tag) }}</span>
+                                <span class="priority" :class="'priority-' + task.priority">{{ getPriorityName(task.priority) }}</span>
+                                <span v-if="task.dueDate" class="due-date" :class="{ overdue: isOverdue(task.dueDate) }">{{ task.dueDate }}</span>
+                                <span v-if="task.description" class="badge" style="background: #95a5a6">📝</span>
+                            </div>
+                        </div>
+                        <div class="task-actions">
+                            <button class="btn-icon btn-primary" @click="editTask(task)">✏️</button>
+                            <button class="btn-icon btn-danger" @click="deleteTask(task.id)">🗑️</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Edit Modal -->
+        <div class="modal" :class="{ show: showModal }" @click.self="showModal = false">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>编辑任务</h3>
+                    <button class="btn" @click="showModal = false">✕</button>
+                </div>
+                <div class="input-group">
+                    <input v-model="editData.text" placeholder="任务内容">
+                </div>
+                <div class="input-row">
+                    <select v-model="editData.listName">
+                        <option value="默认">📋 默认</option>
+                        <option value="工作">💼 工作</option>
+                        <option value="生活">🏠 生活</option>
+                    </select>
+                    <select v-model="editData.tag">
+                        <option value="">标签</option>
+                        <option value="work">💼 工作</option>
+                        <option value="life">🏠 生活</option>
+                    </select>
+                    <select v-model="editData.priority">
+                        <option value="high">🔴 高</option>
+                        <option value="medium">🟡 中</option>
+                        <option value="low">🟢 低</option>
+                    </select>
+                </div>
+                <div class="input-row" style="margin-top: 10px;">
+                    <input type="date" v-model="editData.dueDate">
+                    <select v-model="editData.repeat">
+                        <option value="">不重复</option>
+                        <option value="daily">每天</option>
+                        <option value="weekly">每周</option>
+                    </select>
+                </div>
+                <div class="input-group" style="margin-top: 10px;">
+                    <textarea v-model="editData.description" placeholder="任务描述..." rows="3"></textarea>
+                </div>
+                <div class="input-row" style="margin-top: 15px;">
+                    <button class="btn btn-primary" @click="saveEdit">保存</button>
+                    <button class="btn btn-danger" @click="showModal = false">取消</button>
                 </div>
             </div>
         </div>
@@ -151,83 +283,80 @@
         
         createApp({
             setup() {
-                const API_URL = 'http://localhost:8080/api';
+                const API = 'http://localhost:8080/api';
                 const tasks = ref([]);
-                const stats = ref({ total: 0, completed: 0, pending: 0, overdue: 0, dueToday: 0 });
+                const stats = ref({ total: 0, completed: 0, pending: 0, overdue: 0, dueToday: 0, listCounts: {} });
+                const lists = ref(['默认', '工作', '生活', '学习', '健康']);
                 const filter = ref('all');
+                const currentList = ref('all');
                 const showStats = ref(false);
-                const newTask = ref({ text: '', tag: '', priority: 'medium', dueDate: '', repeat: '' });
-                const completionChart = ref(null);
-                const tagChart = ref(null);
-                const priorityChart = ref(null);
+                const showModal = ref(false);
+                const theme = ref(localStorage.getItem('theme') || 'light');
+                const newTask = ref({ text: '', tag: '', priority: 'medium', dueDate: '', repeat: '', listName: '默认', description: '', color: '' });
+                const editData = ref({ id: null, text: '', tag: '', priority: 'medium', dueDate: '', repeat: '', listName: '默认', description: '' });
                 
-                let charts = { completion: null, tag: null, priority: null };
+                watch(theme, (v) => {
+                    document.documentElement.setAttribute('data-theme', v);
+                    localStorage.setItem('theme', v);
+                });
                 
                 const loadTasks = async () => {
-                    let url = API_URL + '/tasks';
-                    if (filter.value === 'completed') url += '?status=completed';
-                    else if (filter.value === 'pending') url += '?status=pending';
-                    
+                    let url = API + '/tasks?';
+                    if (filter.value === 'completed') url += 'status=completed&';
+                    else if (filter.value === 'pending') url += 'status=pending&';
+                    else if (filter.value === 'overdue') url += 'status=overdue&';
+                    if (currentList.value !== 'all') url += 'list=' + encodeURIComponent(currentList.value);
                     tasks.value = await fetch(url).then(r => r.json());
                     loadStats();
                 };
                 
                 const loadStats = async () => {
-                    stats.value = await fetch(API_URL + '/stats').then(r => r.json());
-                    updateCharts();
+                    stats.value = await fetch(API + '/stats').then(r => r.json());
                 };
                 
                 const addTask = async () => {
                     if (!newTask.value.text.trim()) return;
-                    await fetch(API_URL + '/tasks', {
+                    await fetch(API + '/tasks', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(newTask.value)
                     });
-                    newTask.value = { text: '', tag: '', priority: 'medium', dueDate: '', repeat: '' };
+                    newTask.value = { text: '', tag: '', priority: 'medium', dueDate: '', repeat: '', listName: '默认', description: '', color: '' };
                     loadTasks();
                 };
                 
                 const toggleTask = async (id) => {
-                    await fetch(API_URL + '/tasks/' + id + '/toggle', { method: 'PATCH' });
+                    await fetch(API + '/tasks/' + id + '/toggle', { method: 'PATCH' });
                     loadTasks();
                 };
                 
                 const deleteTask = async (id) => {
-                    await fetch(API_URL + '/tasks/' + id, { method: 'DELETE' });
+                    await fetch(API + '/tasks/' + id, { method: 'DELETE' });
                     loadTasks();
                 };
                 
-                const getTagName = (tag) => ({ work: '💼工作', life: '🏠生活', study: '📚学习', health: '🏃健康', other: '📌' }[tag] || '');
-                const getPriorityName = (p) => ({ high: '🔴高', medium: '🟡中', low: '🟢低' }[p] || '🟡');
-                
-                const toggleStats = () => { showStats.value = !showStats.value; };
-                
-                const updateCharts = () => {
-                    if (!showStats.value) return;
-                    
-                    if (charts.completion) charts.completion.destroy();
-                    if (charts.tag) charts.tag.destroy();
-                    if (charts.priority) charts.priority.destroy();
-                    
-                    charts.completion = new Chart(completionChart.value, {
-                        type: 'doughnut',
-                        data: { labels: ['已完成', '待完成'], datasets: [{ data: [stats.value.completed, stats.value.pending], backgroundColor: ['#4ECDC4', '#667eea'] }] }
-                    });
-                    
-                    charts.tag = new Chart(tagChart.value, {
-                        type: 'pie',
-                        data: { labels: ['工作', '生活', '学习', '健康'], datasets: [{ data: [tasks.value.filter(t => t.tag === 'work').length, tasks.value.filter(t => t.tag === 'life').length, tasks.value.filter(t => t.tag === 'study').length, tasks.value.filter(t => t.tag === 'health').length], backgroundColor: ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4'] }] }
-                    });
-                    
-                    charts.priority = new Chart(priorityChart.value, {
-                        type: 'bar',
-                        data: { labels: ['高', '中', '低'], datasets: [{ label: '数量', data: [tasks.value.filter(t => t.priority === 'high').length, tasks.value.filter(t => t.priority === 'medium').length, tasks.value.filter(t => t.priority === 'low').length], backgroundColor: ['#FF6B6B', '#FFB347', '#4ECDC4'] }] }
-                    });
+                const editTask = (task) => {
+                    editData.value = { ...task };
+                    showModal.value = true;
                 };
                 
+                const saveEdit = async () => {
+                    await fetch(API + '/tasks/' + editData.value.id, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(editData.value)
+                    });
+                    showModal.value = false;
+                    loadTasks();
+                };
+                
+                const getTagName = (t) => ({ work: '💼工作', life: '🏠生活', study: '📚学习', health: '🏃健康' }[t] || '');
+                const getPriorityName = (p) => ({ high: '🔴高', medium: '🟡中', low: '🟢低' }[p] || '🟡');
+                const isOverdue = (d) => d && d < new Date().toISOString().split('T')[0];
+                const getListCount = (list) => stats.value.listCounts?.[list] || 0;
+                
                 const exportData = async () => {
-                    const data = await fetch(API_URL + '/tasks').then(r => r.json());
+                    const data = await fetch(API + '/tasks').then(r => r.json());
                     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
                     const a = document.createElement('a');
                     a.href = URL.createObjectURL(blob);
@@ -235,9 +364,13 @@
                     a.click();
                 };
                 
-                onMounted(() => { loadTasks(); });
+                onMounted(() => {
+                    document.documentElement.setAttribute('data-theme', theme.value);
+                    loadTasks();
+                });
                 
-                return { tasks, stats, filter, showStats, newTask, completionChart, tagChart, priorityChart, loadTasks, addTask, toggleTask, deleteTask, getTagName, getPriorityName, toggleStats, exportData };
+                return { tasks, stats, lists, filter, currentList, showStats, showModal, theme, newTask, editData,
+                    loadTasks, addTask, toggleTask, deleteTask, editTask, saveEdit, getTagName, getPriorityName, isOverdue, getListCount, exportData };
             }
         }).mount('#app');
     </script>

@@ -21,6 +21,14 @@ public class Task {
     private String reminder;
     private String notes;
     
+    // 增强功能
+    private String listName = "默认";  // 任务所属列表
+    private String description;        // 详细描述
+    private Integer orderIndex = 0;   // 排序
+    private String color;             // 任务颜色
+    private String location;           // 位置
+    private String url;               // 相关链接
+    
     @Column(name = "created_at")
     private LocalDateTime createdAt;
     
@@ -57,6 +65,24 @@ public class Task {
     
     public String getNotes() { return notes; }
     public void setNotes(String notes) { this.notes = notes; }
+    
+    public String getListName() { return listName; }
+    public void setListName(String listName) { this.listName = listName; }
+    
+    public String getDescription() { return description; }
+    public void setDescription(String description) { this.description = description; }
+    
+    public Integer getOrderIndex() { return orderIndex; }
+    public void setOrderIndex(Integer orderIndex) { this.orderIndex = orderIndex; }
+    
+    public String getColor() { return color; }
+    public void setColor(String color) { this.color = color; }
+    
+    public String getLocation() { return location; }
+    public void setLocation(String location) { this.location = location; }
+    
+    public String getUrl() { return url; }
+    public void setUrl(String url) { this.url = url; }
     
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
